@@ -10,23 +10,28 @@
   <title>事前事後對齊相機</title>
   <link rel="manifest" href="./manifest.json" />
   <link rel="apple-touch-icon" href="./icon.svg" />
-  <link rel="stylesheet" href="./style.css?v=2" />
+  <link rel="stylesheet" href="./style.css?v=3" />
 </head>
 <body>
   <div class="app-shell">
-    <!-- 頂部狀態與步驟列 -->
+    <!-- 頂部三階段模式切換列 -->
     <header class="top-bar">
-      <div class="step-indicator">
-        <span id="badge-step-1" class="step-badge active">1. 事前照</span>
-        <span class="step-arrow">→</span>
-        <span id="badge-step-2" class="step-badge">2. 對齊拍事後</span>
-        <span class="step-arrow">→</span>
-        <span id="badge-step-3" class="step-badge">3. 合成對比</span>
+      <div class="mode-tabs">
+        <button id="tab-step-1" class="mode-tab active" type="button">1. 連拍事前 (<span id="count-before">0</span>)</button>
+        <button id="tab-step-2" class="mode-tab" type="button">2. 對齊拍事後 (<span id="count-after">0</span>)</button>
+        <button id="tab-step-3" class="mode-tab" type="button">3. 合成對比</button>
       </div>
-      <button id="btn-reset" class="icon-btn" type="button" title="重新開始">重置</button>
+      <button id="btn-reset" class="icon-btn" type="button" title="清空全部">清空</button>
     </header>
 
-    <!-- 相機與疊圖拍攝區 (步驟 1 & 2) -->
+    <!-- 多組照片縮圖清單列（點選可切換要處理哪一組） -->
+    <div id="slot-strip-bar" class="slot-strip-bar">
+      <div id="slot-list" class="slot-list">
+        <span class="slot-empty-hint">尚未拍攝事前照，請按下方快門連續拍攝</span>
+      </div>
+    </div>
+
+    <!-- 相機與疊圖拍攝區 (模式 1 & 2) -->
     <main id="camera-section" class="main-area">
       <div class="viewfinder-wrapper">
         <div id="viewfinder" class="viewfinder">
@@ -39,7 +44,7 @@
             <div class="grid-line h2"></div>
           </div>
 
-          <!-- 步驟 2 陀螺儀視覺對準準星 -->
+          <!-- 模式 2 陀螺儀視覺對準準星 -->
           <div id="gyro-target-box" class="gyro-target-box hidden">
             <div class="gyro-ring">
               <div class="gyro-cross-h"></div>
@@ -49,11 +54,11 @@
             <div id="gyro-delta-badge" class="gyro-delta-badge">調整手機角度對準中心</div>
           </div>
 
-          <div id="mode-banner" class="mode-banner">請拍攝或從相簿選擇「事前照」</div>
+          <div id="mode-banner" class="mode-banner">模式 1：連續拍攝所有「事前照」</div>
         </div>
       </div>
 
-      <!-- 陀螺儀控制與角度讀數列（放在觀景窗外，避免被 iPhone 鏡頭畫面遮擋） -->
+      <!-- 陀螺儀控制與角度讀數列（獨立在觀景窗外，不被鏡頭遮擋） -->
       <div id="gyro-hud" class="gyro-bar">
         <button id="btn-enable-gyro" class="gyro-perm-btn" type="button">🧭 點此啟用陀螺儀角度定位</button>
         <div id="gyro-readout" class="gyro-readout hidden">
@@ -61,7 +66,7 @@
         </div>
       </div>
 
-      <!-- 步驟 2 專用：疊圖透明度與輔助控制 -->
+      <!-- 模式 2 專用：疊圖透明度與輔助控制 -->
       <div id="overlay-controls" class="overlay-controls hidden">
         <div class="slider-row">
           <label for="opacity-slider">事前照透明度</label>
@@ -69,30 +74,30 @@
           <span id="opacity-value">45%</span>
         </div>
         <div class="assist-row">
-          <button id="btn-change-before" class="small-btn" type="button">重選事前照</button>
           <button id="btn-toggle-grid" class="small-btn active" type="button">九宮格線</button>
           <button id="btn-blink-before" class="small-btn" type="button">按住只看事前</button>
+          <button id="btn-to-result" class="small-btn" type="button">查看此組對比</button>
         </div>
       </div>
 
       <!-- 底部快門與操作列 -->
       <div class="camera-actions">
         <label class="action-side-btn" for="file-before-input">
-          <span>📁 相簿載入</span>
-          <input id="file-before-input" type="file" accept="image/*" hidden />
+          <span id="lbl-album-btn">📁 相簿匯入</span>
+          <input id="file-before-input" type="file" accept="image/*" multiple hidden />
         </label>
 
         <button id="btn-shutter" class="shutter-btn" type="button" aria-label="拍照">
           <span class="shutter-inner"></span>
         </button>
 
-        <button id="btn-switch-cam" class="action-side-btn" type="button">
-          <span>🔄 切換鏡頭</span>
+        <button id="btn-next-phase" class="action-side-btn primary-side-btn" type="button">
+          <span>去拍事後照 →</span>
         </button>
       </div>
     </main>
 
-    <!-- 結果與合成對比區 (步驟 3) -->
+    <!-- 結果與合成對比區 (模式 3) -->
     <section id="result-section" class="main-area result-area hidden">
       <div class="result-options">
         <div class="segmented-control">
@@ -101,16 +106,19 @@
           <button type="button" class="seg-btn" data-layout="single">單張分開看</button>
         </div>
 
-        <label class="checkbox-label">
-          <input id="chk-show-labels" type="checkbox" checked />
-          <span>加上「事前 / 事後」標籤</span>
-        </label>
+        <div class="options-row">
+          <label class="checkbox-label">
+            <input id="chk-show-labels" type="checkbox" checked />
+            <span>加上「事前 / 事後」標籤</span>
+          </label>
+          <button id="btn-switch-cam" class="mini-link-btn" type="button">🔄 切換前後鏡頭</button>
+        </div>
       </div>
 
-      <!-- 合成後預覽圖（支援 iPhone 長按直接儲存影像） -->
+      <!-- 合成後預覽圖 -->
       <div id="combined-preview-box" class="preview-box">
         <img id="combined-result-img" alt="事前事後對比圖" />
-        <p class="hint-text">提示：可點下方按鈕分享／存檔，或直接長按圖片選「儲存影像」</p>
+        <p id="result-status-text" class="hint-text">提示：點上方縮圖可切換不同組照片，長按圖片或點下方按鈕可儲存</p>
       </div>
 
       <!-- 單張分開預覽 -->
@@ -128,12 +136,13 @@
       </div>
 
       <div class="result-actions">
-        <button id="btn-retake-after" class="secondary-btn" type="button">重拍事後照</button>
-        <button id="btn-share-combined" class="primary-btn" type="button">分享 / 存入相簿</button>
+        <button id="btn-retake-after" class="secondary-btn" type="button">重拍此組事後</button>
+        <button id="btn-share-combined" class="primary-btn" type="button">分享此組對比照</button>
+        <button id="btn-share-all" class="accent-btn" type="button">批次分享全部</button>
       </div>
     </section>
   </div>
 
-  <script src="./app.js?v=2"></script>
+  <script src="./app.js?v=3"></script>
 </body>
 </html>
