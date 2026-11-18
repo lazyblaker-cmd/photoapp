@@ -10,7 +10,7 @@
   <title>事前事後對齊相機</title>
   <link rel="manifest" href="./manifest.json" />
   <link rel="apple-touch-icon" href="./icon.svg" />
-  <link rel="stylesheet" href="./style.css" />
+  <link rel="stylesheet" href="./style.css?v=2" />
 </head>
 <body>
   <div class="app-shell">
@@ -39,14 +39,6 @@
             <div class="grid-line h2"></div>
           </div>
 
-          <!-- 陀螺儀對齊準星與數據 HUD -->
-          <div id="gyro-hud" class="gyro-hud">
-            <button id="btn-enable-gyro" class="gyro-perm-btn" type="button">🧭 點此啟用陀螺儀定位</button>
-            <div id="gyro-readout" class="gyro-readout hidden">
-              <span id="gyro-text">陀螺儀待命中...</span>
-            </div>
-          </div>
-
           <!-- 步驟 2 陀螺儀視覺對準準星 -->
           <div id="gyro-target-box" class="gyro-target-box hidden">
             <div class="gyro-ring">
@@ -58,6 +50,14 @@
           </div>
 
           <div id="mode-banner" class="mode-banner">請拍攝或從相簿選擇「事前照」</div>
+        </div>
+      </div>
+
+      <!-- 陀螺儀控制與角度讀數列（放在觀景窗外，避免被 iPhone 鏡頭畫面遮擋） -->
+      <div id="gyro-hud" class="gyro-bar">
+        <button id="btn-enable-gyro" class="gyro-perm-btn" type="button">🧭 點此啟用陀螺儀角度定位</button>
+        <div id="gyro-readout" class="gyro-readout hidden">
+          <span id="gyro-text">🧭 陀螺儀已啟用，請稍微移動手機...</span>
         </div>
       </div>
 
@@ -134,6 +134,6 @@
     </section>
   </div>
 
-  <script src="./app.js"></script>
+  <script src="./app.js?v=2"></script>
 </body>
 </html>
