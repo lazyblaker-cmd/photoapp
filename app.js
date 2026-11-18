@@ -37,6 +37,15 @@
   const btnRetakeAfter = document.getElementById('btn-retake-after');
   const btnShareCombined = document.getElementById('btn-share-combined');
 
+  // 陀螺儀 DOM
+  const btnEnableGyro = document.getElementById('btn-enable-gyro');
+  const gyroReadout = document.getElementById('gyro-readout');
+  const gyroText = document.getElementById('gyro-text');
+  const gyroTargetBox = document.getElementById('gyro-target-box');
+  const gyroRing = gyroTargetBox.querySelector('.gyro-ring');
+  const gyroDot = document.getElementById('gyro-dot');
+  const gyroDeltaBadge = document.getElementById('gyro-delta-badge');
+
   // 狀態
   let currentStream = null;
   let facingMode = 'environment'; // 預設使用後鏡頭
@@ -47,6 +56,12 @@
   let currentLayout = 'horizontal'; // 'horizontal' | 'vertical' | 'single'
   let combinedDataUrl = '';
   let filePickTarget = 'auto'; // 'auto' | 'before'
+
+  // 陀螺儀狀態
+  let gyroEnabled = false;
+  let currentGyro = null; // { beta, gamma, heading }
+  let beforeGyro = null;  // 拍事前照時記錄的 { beta, gamma, heading }
+  const STORAGE_KEY = 'photoapp_before_session_v1';
 
   // 啟動相機
   async function startCamera() {
@@ -113,9 +128,144 @@
     return canvas.toDataURL('image/jpeg', 0.92);
   }
 
+  // 角度最短差值 (-180 ~ 180)
+  function angleDiff(current, target) {
+    return ((current - target + 540) % 360) - 180;
+  }
+
+  // 啟用 iPhone / 行動裝置陀螺儀權限
+  async function enableGyroscope() {
+    if (gyroEnabled) return;
+    try {
+      if (
+        typeof DeviceOrientationEvent !== 'undefined' &&
+        typeof DeviceOrientationEvent.requestPermission === 'function'
+      ) {
+        const state = await DeviceOrientationEvent.requestPermission();
+        if (state !== 'granted') {
+          btnEnableGyro.textContent = '⚠️ 請在 Safari 設定允許動作與方向權限';
+          return;
+        }
+      }
+      window.addEventListener('deviceorientation', handleOrientation, true);
+      gyroEnabled = true;
+      btnEnableGyro.classList.add('hidden');
+      gyroReadout.classList.remove('hidden');
+      updateGyroHUD();
+    } catch (err) {
+      console.error('陀螺儀啟用失敗:', err);
+      btnEnableGyro.textContent = '⚠️ 無法讀取陀螺儀（需使用 HTTPS 網址）';
+    }
+  }
+
+  function handleOrientation(e) {
+    if (e.beta === null && e.gamma === null) return;
+    const beta = Math.round(e.beta || 0);   // 前後俯仰 (-180 ~ 180)
+    const gamma = Math.round(e.gamma || 0); // 左右傾斜 (-90 ~ 90)
+    let heading = null;
+    if (typeof e.webkitCompassHeading === 'number') {
+      heading = Math.round(e.webkitCompassHeading);
+    } else if (typeof e.alpha === 'number') {
+      heading = Math.round((360 - e.alpha) % 360);
+    }
+    currentGyro = { beta, gamma, heading };
+    updateGyroHUD();
+  }
+
+  // 更新陀螺儀數值與步驟 2 對準準星
+  function updateGyroHUD() {
+    if (!gyroEnabled || !currentGyro) {
+      gyroTargetBox.classList.add('hidden');
+      return;
+    }
+
+    const { beta, gamma, heading } = currentGyro;
+    const headingStr = heading !== null ? ` ｜ 方位 ${heading}°` : '';
+
+    if (step === 1) {
+      gyroTargetBox.classList.add('hidden');
+      gyroReadout.classList.remove('aligned');
+      gyroText.textContent = `🧭 目前角度：俯仰 ${beta}° ｜ 水平 ${gamma}°${headingStr}`;
+      return;
+    }
+
+    if (step === 2) {
+      if (!beforeGyro) {
+        // 相簿載入的事前照（無當時陀螺儀紀錄），提供水平儀與點一下鎖定目前角度功能
+        gyroTargetBox.classList.add('hidden');
+        gyroReadout.classList.remove('aligned');
+        gyroText.textContent = `🧭 目前：俯仰 ${beta}° ｜ 水平 ${gamma}°（點此設為目標角度）`;
+        return;
+      }
+
+      gyroTargetBox.classList.remove('hidden');
+
+      const dBeta = angleDiff(beta, beforeGyro.beta);
+      const dGamma = gamma - beforeGyro.gamma;
+      const dHeading =
+        heading !== null && beforeGyro.heading !== null
+          ? angleDiff(heading, beforeGyro.heading)
+          : null;
+
+      // 將角度誤差對應到準星圓點偏移 (最大偏移 ±30px)
+      const clamp = (v, max) => Math.max(-max, Math.min(max, v));
+      const offsetX = clamp(dGamma * 2.2, 30);
+      const offsetY = clamp(dBeta * 2.2, 30);
+      gyroDot.style.transform = `translate(calc(-50% + ${offsetX}px), calc(-50% + ${offsetY}px))`;
+
+      const pitchRollAligned = Math.abs(dBeta) <= 2 && Math.abs(dGamma) <= 2;
+      const headingAligned = dHeading === null || Math.abs(dHeading) <= 8;
+      const isAligned = pitchRollAligned && headingAligned;
+
+      gyroRing.classList.toggle('aligned', isAligned);
+      gyroDeltaBadge.classList.toggle('aligned', isAligned);
+      gyroReadout.classList.toggle('aligned', isAligned);
+
+      const sign = (n) => (n > 0 ? `+${n}°` : `${n}°`);
+      const headingDeltaStr = dHeading !== null ? ` ｜ 方位差 ${sign(dHeading)}` : '';
+
+      if (isAligned) {
+        gyroDeltaBadge.textContent = '✓ 拍攝角度已對齊';
+        gyroText.textContent = `✓ 與事前照角度一致（俯仰 ${beta}° ｜ 水平 ${gamma}°）`;
+      } else {
+        gyroDeltaBadge.textContent = `俯仰差 ${sign(dBeta)} ｜ 水平差 ${sign(dGamma)}${headingDeltaStr}`;
+        gyroText.textContent = `目標：俯仰 ${beforeGyro.beta}° / 水平 ${beforeGyro.gamma}°${
+          beforeGyro.heading !== null ? ` / 方位 ${beforeGyro.heading}°` : ''
+        }`;
+      }
+    }
+  }
+
+  // 儲存事前照與陀螺儀角度到本機，避免關掉網頁後遺忘
+  function saveBeforeSession(dataUrl, gyroData) {
+    try {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          dataUrl,
+          gyro: gyroData || null,
+          savedAt: Date.now()
+        })
+      );
+    } catch (e) {
+      // 忽略空間不足錯誤
+    }
+  }
+
+  function clearBeforeSession() {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (e) {}
+  }
+
   // 設定「事前照」並進入步驟 2
-  async function setBeforePhoto(dataUrl) {
+  async function setBeforePhoto(dataUrl, recordedGyro = null, persist = true) {
     beforeImage = await loadImage(dataUrl);
+    beforeGyro = recordedGyro ? { ...recordedGyro } : null;
+    if (persist) {
+      saveBeforeSession(dataUrl, beforeGyro);
+    }
+
     targetAspect = beforeImage.naturalWidth / beforeImage.naturalHeight;
     viewfinder.style.aspectRatio = `${beforeImage.naturalWidth} / ${beforeImage.naturalHeight}`;
 
@@ -125,6 +275,7 @@
 
     step = 2;
     updateUIForStep();
+    updateGyroHUD();
   }
 
   // 設定「事後照」並進入步驟 3
@@ -170,6 +321,7 @@
       resultSection.classList.remove('hidden');
       stopCamera();
     }
+    updateGyroHUD();
   }
 
   // 繪製標籤膠囊
@@ -284,12 +436,25 @@
   }
 
   // 事件綁定
+  btnEnableGyro.addEventListener('click', () => {
+    enableGyroscope();
+  });
+
+  // 若事前照從相簿載入沒有當時角度，點一下讀數列可將目前角度設為目標角度
+  gyroReadout.addEventListener('click', () => {
+    if (step === 2 && !beforeGyro && currentGyro && beforeImage) {
+      beforeGyro = { ...currentGyro };
+      saveBeforeSession(beforeImage.src, beforeGyro);
+      updateGyroHUD();
+    }
+  });
+
   btnShutter.addEventListener('click', async () => {
     const frameDataUrl = captureVideoFrame(targetAspect);
     if (!frameDataUrl) return;
 
     if (step === 1) {
-      await setBeforePhoto(frameDataUrl);
+      await setBeforePhoto(frameDataUrl, currentGyro);
     } else if (step === 2) {
       await setAfterPhoto(frameDataUrl);
     }
@@ -363,6 +528,8 @@
   btnReset.addEventListener('click', () => {
     beforeImage = null;
     afterImage = null;
+    beforeGyro = null;
+    clearBeforeSession();
     step = 1;
     updateUIForStep();
   });
@@ -383,6 +550,19 @@
     shareOrDownloadImage(afterImage.src, '事後照_after.jpg');
   });
 
+  // 自動還原上次尚未拍完事後照的「事前照 + 陀螺儀角度」
+  async function restoreBeforeSession() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.dataUrl) {
+        await setBeforePhoto(parsed.dataUrl, parsed.gyro || null, false);
+      }
+    } catch (e) {}
+  }
+
   // 初始化
   startCamera();
+  restoreBeforeSession();
 })();

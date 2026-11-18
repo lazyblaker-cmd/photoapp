@@ -38,6 +38,25 @@
             <div class="grid-line h1"></div>
             <div class="grid-line h2"></div>
           </div>
+
+          <!-- 陀螺儀對齊準星與數據 HUD -->
+          <div id="gyro-hud" class="gyro-hud">
+            <button id="btn-enable-gyro" class="gyro-perm-btn" type="button">🧭 點此啟用陀螺儀定位</button>
+            <div id="gyro-readout" class="gyro-readout hidden">
+              <span id="gyro-text">陀螺儀待命中...</span>
+            </div>
+          </div>
+
+          <!-- 步驟 2 陀螺儀視覺對準準星 -->
+          <div id="gyro-target-box" class="gyro-target-box hidden">
+            <div class="gyro-ring">
+              <div class="gyro-cross-h"></div>
+              <div class="gyro-cross-v"></div>
+              <div id="gyro-dot" class="gyro-dot"></div>
+            </div>
+            <div id="gyro-delta-badge" class="gyro-delta-badge">調整手機角度對準中心</div>
+          </div>
+
           <div id="mode-banner" class="mode-banner">請拍攝或從相簿選擇「事前照」</div>
         </div>
       </div>
