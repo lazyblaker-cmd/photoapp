@@ -1,0 +1,438 @@
+:root {
+  --bg: #111827;
+  --panel: #1F2937;
+  --border: #374151;
+  --text: #F9FAFB;
+  --muted: #9CA3AF;
+  --primary: #2563EB;
+  --primary-hover: #1D4ED8;
+  --accent: #10B981;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+  overflow: hidden;
+}
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100dvh;
+  max-width: 540px;
+  margin: 0 auto;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* 頂部步驟列 */
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.step-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.step-badge {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #374151;
+  color: var(--muted);
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.step-badge.active {
+  background: var(--primary);
+  color: #fff;
+}
+
+.step-badge.done {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34D399;
+}
+
+.step-arrow {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.icon-btn {
+  background: #374151;
+  color: var(--text);
+  border: 1px solid #4B5563;
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* 主內容區 */
+.main-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow-y: auto;
+  padding: 10px 12px;
+  gap: 10px;
+}
+
+/* 觀景窗與疊圖 */
+.viewfinder-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  width: 100%;
+}
+
+.viewfinder {
+  position: relative;
+  width: 100%;
+  max-height: 100%;
+  aspect-ratio: 3 / 4;
+  background: #000;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+#camera-video,
+.before-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.before-overlay {
+  pointer-events: none;
+  opacity: 0.45;
+  z-index: 2;
+}
+
+/* 九宮格線 */
+.grid-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.grid-line {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.grid-line.v1 { left: 33.33%; top: 0; bottom: 0; width: 1px; }
+.grid-line.v2 { left: 66.66%; top: 0; bottom: 0; width: 1px; }
+.grid-line.h1 { top: 33.33%; left: 0; right: 0; height: 1px; }
+.grid-line.h2 { top: 66.66%; left: 0; right: 0; height: 1px; }
+
+.mode-banner {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 4;
+  background: rgba(17, 24, 39, 0.78);
+  backdrop-filter: blur(6px);
+  color: #fff;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+/* 疊圖透明度控制區 */
+.overlay-controls {
+  background: var(--panel);
+  padding: 10px 12px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.slider-row input[type="range"] {
+  flex: 1;
+  accent-color: var(--primary);
+}
+
+#opacity-value {
+  width: 38px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.assist-row {
+  display: flex;
+  gap: 8px;
+}
+
+.small-btn {
+  flex: 1;
+  padding: 7px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #111827;
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.small-btn.active {
+  border-color: var(--primary);
+  background: rgba(37, 99, 235, 0.2);
+  color: #93C5FD;
+}
+
+/* 相機快門列 */
+.camera-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 6px 0 8px;
+  flex-shrink: 0;
+}
+
+.action-side-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 104px;
+  padding: 10px 12px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.shutter-btn {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 4px solid #fff;
+  background: transparent;
+  padding: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.shutter-btn:active .shutter-inner {
+  transform: scale(0.9);
+}
+
+.shutter-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.12s, background-color 0.2s;
+}
+
+.shutter-btn.after-mode {
+  border-color: #60A5FA;
+}
+
+.shutter-btn.after-mode .shutter-inner {
+  background: var(--primary);
+}
+
+/* 步驟 3：對比合成預覽區 */
+.result-area {
+  justify-content: flex-start;
+}
+
+.result-options {
+  background: var(--panel);
+  padding: 10px 12px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.segmented-control {
+  display: flex;
+  background: #111827;
+  padding: 3px;
+  border-radius: 10px;
+  gap: 4px;
+}
+
+.seg-btn {
+  flex: 1;
+  padding: 8px 6px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.seg-btn.active {
+  background: var(--primary);
+  color: #fff;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.checkbox-label input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary);
+}
+
+.preview-box {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  gap: 8px;
+  background: #0B0F19;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px;
+}
+
+#combined-result-img {
+  max-width: 100%;
+  max-height: calc(100dvh - 300px);
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.hint-text {
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.single-preview-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  align-items: start;
+  overflow-y: auto;
+}
+
+.single-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+.single-card img {
+  width: 100%;
+  border-radius: 8px;
+  object-fit: contain;
+}
+
+.card-tag {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #374151;
+}
+
+.card-tag.after {
+  background: var(--primary);
+}
+
+.result-actions {
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
+  padding-top: 4px;
+}
+
+.primary-btn,
+.secondary-btn {
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+}
+
+.primary-btn {
+  flex: 2;
+  background: var(--primary);
+  color: #fff;
+}
+
+.primary-btn:active {
+  background: var(--primary-hover);
+}
+
+.secondary-btn {
+  flex: 1;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+}

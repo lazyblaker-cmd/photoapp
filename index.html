@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="對比相機" />
+  <meta name="theme-color" content="#111827" />
+  <title>事前事後對齊相機</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="apple-touch-icon" href="./icon.svg" />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <!-- 頂部狀態與步驟列 -->
+    <header class="top-bar">
+      <div class="step-indicator">
+        <span id="badge-step-1" class="step-badge active">1. 事前照</span>
+        <span class="step-arrow">→</span>
+        <span id="badge-step-2" class="step-badge">2. 對齊拍事後</span>
+        <span class="step-arrow">→</span>
+        <span id="badge-step-3" class="step-badge">3. 合成對比</span>
+      </div>
+      <button id="btn-reset" class="icon-btn" type="button" title="重新開始">重置</button>
+    </header>
+
+    <!-- 相機與疊圖拍攝區 (步驟 1 & 2) -->
+    <main id="camera-section" class="main-area">
+      <div class="viewfinder-wrapper">
+        <div id="viewfinder" class="viewfinder">
+          <video id="camera-video" autoplay playsinline muted></video>
+          <img id="before-overlay" class="before-overlay hidden" alt="事前照疊圖" />
+          <div id="grid-overlay" class="grid-overlay">
+            <div class="grid-line v1"></div>
+            <div class="grid-line v2"></div>
+            <div class="grid-line h1"></div>
+            <div class="grid-line h2"></div>
+          </div>
+          <div id="mode-banner" class="mode-banner">請拍攝或從相簿選擇「事前照」</div>
+        </div>
+      </div>
+
+      <!-- 步驟 2 專用：疊圖透明度與輔助控制 -->
+      <div id="overlay-controls" class="overlay-controls hidden">
+        <div class="slider-row">
+          <label for="opacity-slider">事前照透明度</label>
+          <input id="opacity-slider" type="range" min="0" max="100" value="45" />
+          <span id="opacity-value">45%</span>
+        </div>
+        <div class="assist-row">
+          <button id="btn-change-before" class="small-btn" type="button">重選事前照</button>
+          <button id="btn-toggle-grid" class="small-btn active" type="button">九宮格線</button>
+          <button id="btn-blink-before" class="small-btn" type="button">按住只看事前</button>
+        </div>
+      </div>
+
+      <!-- 底部快門與操作列 -->
+      <div class="camera-actions">
+        <label class="action-side-btn" for="file-before-input">
+          <span>📁 相簿載入</span>
+          <input id="file-before-input" type="file" accept="image/*" hidden />
+        </label>
+
+        <button id="btn-shutter" class="shutter-btn" type="button" aria-label="拍照">
+          <span class="shutter-inner"></span>
+        </button>
+
+        <button id="btn-switch-cam" class="action-side-btn" type="button">
+          <span>🔄 切換鏡頭</span>
+        </button>
+      </div>
+    </main>
+
+    <!-- 結果與合成對比區 (步驟 3) -->
+    <section id="result-section" class="main-area result-area hidden">
+      <div class="result-options">
+        <div class="segmented-control">
+          <button type="button" class="seg-btn active" data-layout="horizontal">左右並排</button>
+          <button type="button" class="seg-btn" data-layout="vertical">上下並排</button>
+          <button type="button" class="seg-btn" data-layout="single">單張分開看</button>
+        </div>
+
+        <label class="checkbox-label">
+          <input id="chk-show-labels" type="checkbox" checked />
+          <span>加上「事前 / 事後」標籤</span>
+        </label>
+      </div>
+
+      <!-- 合成後預覽圖（支援 iPhone 長按直接儲存影像） -->
+      <div id="combined-preview-box" class="preview-box">
+        <img id="combined-result-img" alt="事前事後對比圖" />
+        <p class="hint-text">提示：可點下方按鈕分享／存檔，或直接長按圖片選「儲存影像」</p>
+      </div>
+
+      <!-- 單張分開預覽 -->
+      <div id="single-preview-box" class="single-preview-grid hidden">
+        <div class="single-card">
+          <span class="card-tag">事前照</span>
+          <img id="single-before-img" alt="事前照" />
+          <button id="btn-save-before" class="secondary-btn" type="button">儲存事前照</button>
+        </div>
+        <div class="single-card">
+          <span class="card-tag after">事後照</span>
+          <img id="single-after-img" alt="事後照" />
+          <button id="btn-save-after" class="secondary-btn" type="button">儲存事後照</button>
+        </div>
+      </div>
+
+      <div class="result-actions">
+        <button id="btn-retake-after" class="secondary-btn" type="button">重拍事後照</button>
+        <button id="btn-share-combined" class="primary-btn" type="button">分享 / 存入相簿</button>
+      </div>
+    </section>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
