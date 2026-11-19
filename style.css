@@ -400,6 +400,16 @@ html, body {
   cursor: pointer;
 }
 
+.viewfinder.gyro-aligned {
+  border-color: #10B981 !important;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.65);
+}
+
+.viewfinder.split-mode.gyro-aligned .camera-pane {
+  border-color: #10B981 !important;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.65);
+}
+
 .gyro-readout {
   width: 100%;
   background: var(--panel);
@@ -410,13 +420,15 @@ html, body {
   font-size: 12px;
   font-variant-numeric: tabular-nums;
   text-align: center;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
 }
 
 .gyro-readout.aligned {
-  background: rgba(16, 185, 129, 0.25);
-  border-color: #10B981;
-  color: #6EE7B7;
+  background: #10B981 !important;
+  border-color: #6EE7B7 !important;
+  color: #FFFFFF !important;
   font-weight: 700;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.5);
 }
 
 .gyro-target-box {

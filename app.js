@@ -235,6 +235,17 @@
       heading = Math.round((360 - e.alpha) % 360);
     }
     currentGyro = { beta, gamma, heading };
+
+    // 若第一張前照按下快門時剛跳出 iOS 授權視窗，授權後第一個角度讀數自動補寫入剛拍的前照
+    if (step === 1 && slots.length > 0) {
+      const lastSlot = slots[slots.length - 1];
+      if (lastSlot && lastSlot.fromCamera && !lastSlot.gyro) {
+        lastSlot.gyro = { ...currentGyro };
+        saveSlotsToDB();
+        renderSlotStrip();
+      }
+    }
+
     updateGyroHUD();
   }
 
@@ -248,6 +259,7 @@
   function updateGyroHUD() {
     if (!gyroEnabled || !currentGyro) {
       gyroTargetBox.classList.add('hidden');
+      viewfinder.classList.remove('gyro-aligned');
       return;
     }
 
@@ -257,6 +269,7 @@
     if (step === 1) {
       gyroTargetBox.classList.add('hidden');
       gyroReadout.classList.remove('aligned');
+      viewfinder.classList.remove('gyro-aligned');
       gyroText.textContent = `🧭 目前角度：俯仰 ${beta}° ｜ 水平 ${gamma}°${headingStr}`;
       return;
     }
@@ -268,7 +281,8 @@
       if (!targetGyro) {
         gyroTargetBox.classList.add('hidden');
         gyroReadout.classList.remove('aligned');
-        gyroText.textContent = `🧭 目前：俯仰 ${beta}° ｜ 水平 ${gamma}°（點此設為此組目標角度）`;
+        viewfinder.classList.remove('gyro-aligned');
+        gyroText.textContent = `🧭 目前：俯仰 ${beta}° ｜ 水平 ${gamma}°（點此鎖定為此組目標角度）`;
         return;
       }
 
@@ -276,47 +290,44 @@
 
       const dBeta = angleDiff(beta, targetGyro.beta);
       const dGamma = gamma - targetGyro.gamma;
-      const dHeading =
-        heading !== null && targetGyro.heading !== null
-          ? angleDiff(heading, targetGyro.heading)
-          : null;
 
       const clamp = (v, max) => Math.max(-max, Math.min(max, v));
       const offsetX = clamp(dGamma * 2.2, 30);
       const offsetY = clamp(dBeta * 2.2, 30);
       gyroDot.style.transform = `translate(calc(-50% + ${offsetX}px), calc(-50% + ${offsetY}px))`;
 
-      const pitchRollAligned = Math.abs(dBeta) <= 2 && Math.abs(dGamma) <= 2;
-      const headingAligned = dHeading === null || Math.abs(dHeading) <= 8;
-      const isAligned = pitchRollAligned && headingAligned;
+      // 以俯仰角與水平傾角對準中心為準（避免室內電子羅盤方位角漂移導致無法變綠）
+      const isAligned = Math.abs(dBeta) <= 3 && Math.abs(dGamma) <= 3;
 
       gyroRing.classList.toggle('aligned', isAligned);
       gyroDeltaBadge.classList.toggle('aligned', isAligned);
       gyroReadout.classList.toggle('aligned', isAligned);
+      viewfinder.classList.toggle('gyro-aligned', isAligned);
 
       const sign = (n) => (n > 0 ? `+${n}°` : `${n}°`);
-      const headingDeltaStr = dHeading !== null ? ` ｜ 方位差 ${sign(dHeading)}` : '';
 
       if (isAligned) {
         gyroDeltaBadge.textContent = `✓ 第 #${selectedIndex + 1} 組角度已對齊`;
-        gyroText.textContent = `✓ 與 #${selectedIndex + 1} 前照角度一致（俯仰 ${beta}° ｜ 水平 ${gamma}°）`;
+        gyroText.textContent = `✓ 已對齊 #${selectedIndex + 1} 前照角度（俯仰 ${beta}° ｜ 水平 ${gamma}°）`;
       } else {
-        gyroDeltaBadge.textContent = `俯仰差 ${sign(dBeta)} ｜ 水平差 ${sign(dGamma)}${headingDeltaStr}`;
-        gyroText.textContent = `#${selectedIndex + 1} 目標：俯仰 ${targetGyro.beta}° / 水平 ${targetGyro.gamma}°${
-          targetGyro.heading !== null ? ` / 方位 ${targetGyro.heading}°` : ''
-        }`;
+        gyroDeltaBadge.textContent = `俯仰差 ${sign(dBeta)} ｜ 水平差 ${sign(dGamma)}`;
+        gyroText.textContent = `#${selectedIndex + 1} 目標：俯仰 ${targetGyro.beta}° / 水平 ${targetGyro.gamma}° ｜ 目前：${beta}° / ${gamma}°`;
       }
+      return;
     }
+
+    viewfinder.classList.remove('gyro-aligned');
   }
 
-  // 新增一張「事前照」到清單（保持在模式 1 可連續拍）
-  async function addBeforeSlot(dataUrl, recordedGyro = null) {
+  // 新增一張「前照」到清單（保持在模式 1 可連續拍）
+  async function addBeforeSlot(dataUrl, recordedGyro = null, fromCamera = true) {
     const img = await loadImage(dataUrl);
     const newSlot = {
       id: `${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       beforeDataUrl: dataUrl,
       afterDataUrl: null,
       gyro: recordedGyro ? { ...recordedGyro } : null,
+      fromCamera,
       width: img.naturalWidth,
       height: img.naturalHeight
     };
@@ -858,7 +869,7 @@
     if (step === 1) {
       for (const file of files) {
         const dataUrl = await readFileAsDataUrl(file);
-        await addBeforeSlot(dataUrl, null);
+        await addBeforeSlot(dataUrl, null, false);
       }
     } else if (step === 2) {
       const dataUrl = await readFileAsDataUrl(files[0]);
