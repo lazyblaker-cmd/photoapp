@@ -1,7 +1,7 @@
 {
-  "name": "事前事後對齊相機",
+  "name": "前後對齊對比相機",
   "short_name": "對比相機",
-  "description": "拍攝事後照時疊加事前照對齊，一鍵合成對比圖",
+  "description": "拍攝後照時疊加或並排前照對齊，一鍵合成前後對比圖",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#111827",

@@ -2,10 +2,13 @@
   // DOM 元素
   const video = document.getElementById('camera-video');
   const viewfinder = document.getElementById('viewfinder');
+  const beforePane = document.getElementById('before-pane');
   const beforeOverlay = document.getElementById('before-overlay');
-  const gridOverlay = document.getElementById('grid-overlay');
   const modeBanner = document.getElementById('mode-banner');
   const overlayControls = document.getElementById('overlay-controls');
+  const btnAlignOverlay = document.getElementById('btn-align-overlay');
+  const btnAlignSplit = document.getElementById('btn-align-split');
+  const opacitySliderRow = document.getElementById('opacity-slider-row');
   const opacitySlider = document.getElementById('opacity-slider');
   const opacityValue = document.getElementById('opacity-value');
 
@@ -45,7 +48,6 @@
   const btnShareAll = document.getElementById('btn-share-all');
 
   // 陀螺儀 DOM
-  const btnEnableGyro = document.getElementById('btn-enable-gyro');
   const gyroReadout = document.getElementById('gyro-readout');
   const gyroText = document.getElementById('gyro-text');
   const gyroTargetBox = document.getElementById('gyro-target-box');
@@ -70,6 +72,7 @@
   let slots = [];
   let selectedIndex = -1;
   let targetAspect = 3 / 4;
+  let alignMode = 'overlay'; // 'overlay' (重疊半透明) | 'split' (左事前 / 右事後鏡頭)
   let currentLayout = 'horizontal';
   let combinedDataUrl = '';
 
@@ -185,32 +188,34 @@
     return ((current - target + 540) % 360) - 180;
   }
 
-  // 啟用陀螺儀
+  // 預設自動啟用陀螺儀（若 iOS Safari 需首次觸控授權，會在第一次觸碰螢幕任何位置時自動完成）
+  let gyroRequesting = false;
   async function enableGyroscope() {
-    if (gyroEnabled) return;
+    if (gyroEnabled || gyroRequesting) return;
+    gyroRequesting = true;
     try {
+      window.addEventListener('deviceorientation', handleOrientation, true);
       if (
         typeof DeviceOrientationEvent !== 'undefined' &&
         typeof DeviceOrientationEvent.requestPermission === 'function'
       ) {
         const state = await DeviceOrientationEvent.requestPermission();
         if (state !== 'granted') {
-          btnEnableGyro.textContent = '⚠️ 請在 Safari 設定允許動作與方向權限';
+          gyroRequesting = false;
           return;
         }
       }
-      window.addEventListener('deviceorientation', handleOrientation, true);
       gyroEnabled = true;
-      btnEnableGyro.classList.add('hidden');
-      gyroReadout.classList.remove('hidden');
       updateGyroHUD();
     } catch (err) {
-      btnEnableGyro.textContent = '⚠️ 無法讀取陀螺儀（需使用 HTTPS 網址）';
+      // iOS Safari 在無觸控手勢直接呼叫時可能拋出例外，待使用者首次觸碰螢幕任意處會自動重試
     }
+    gyroRequesting = false;
   }
 
   function handleOrientation(e) {
     if (e.beta === null && e.gamma === null) return;
+    gyroEnabled = true;
     const beta = Math.round(e.beta || 0);
     const gamma = Math.round(e.gamma || 0);
     let heading = null;
@@ -284,7 +289,7 @@
 
       if (isAligned) {
         gyroDeltaBadge.textContent = `✓ 第 #${selectedIndex + 1} 組角度已對齊`;
-        gyroText.textContent = `✓ 與 #${selectedIndex + 1} 事前照角度一致（俯仰 ${beta}° ｜ 水平 ${gamma}°）`;
+        gyroText.textContent = `✓ 與 #${selectedIndex + 1} 前照角度一致（俯仰 ${beta}° ｜ 水平 ${gamma}°）`;
       } else {
         gyroDeltaBadge.textContent = `俯仰差 ${sign(dBeta)} ｜ 水平差 ${sign(dGamma)}${headingDeltaStr}`;
         gyroText.textContent = `#${selectedIndex + 1} 目標：俯仰 ${targetGyro.beta}° / 水平 ${targetGyro.gamma}°${
@@ -354,7 +359,7 @@
     if (slots.length === 0) {
       const hint = document.createElement('span');
       hint.className = 'slot-empty-hint';
-      hint.textContent = '尚未拍攝事前照，請按下方白色快門連續拍攝所有位置';
+      hint.textContent = '尚未拍攝「前 before」照片，請點畫面或按快門連續拍攝';
       slotListEl.appendChild(hint);
       return;
     }
@@ -420,16 +425,17 @@
     if (step === 1) {
       cameraSection.classList.remove('hidden');
       resultSection.classList.add('hidden');
-      beforeOverlay.classList.add('hidden');
+      viewfinder.classList.remove('split-mode');
+      beforePane.classList.add('hidden');
       overlayControls.classList.add('hidden');
       btnShutter.classList.remove('after-mode');
       fileBeforeInput.multiple = true;
       lblAlbumBtn.textContent = '📁 批次匯入';
-      btnNextPhase.innerHTML = '<span>去拍事後照 →</span>';
+      btnNextPhase.innerHTML = '<span>去拍後照 →</span>';
 
       targetAspect = 3 / 4;
-      viewfinder.style.aspectRatio = '3 / 4';
-      modeBanner.textContent = `模式 1：連續拍事前照（目前已拍 ${slots.length} 張）`;
+      viewfinder.style.setProperty('--slot-aspect', '3 / 4');
+      modeBanner.textContent = `模式 1：點畫面任意處或快門連拍「前 before」（已拍 ${slots.length} 張）`;
       if (!currentStream) startCamera();
     } else if (step === 2) {
       if (slots.length === 0) {
@@ -447,17 +453,27 @@
       overlayControls.classList.remove('hidden');
       btnShutter.classList.add('after-mode');
       fileBeforeInput.multiple = false;
-      lblAlbumBtn.textContent = '📁 載入事後';
+      lblAlbumBtn.textContent = '📁 載入後照';
       btnNextPhase.innerHTML = '<span>看合成對比 →</span>';
 
       targetAspect = slot.width / slot.height;
-      viewfinder.style.aspectRatio = `${slot.width} / ${slot.height}`;
+      viewfinder.style.setProperty('--slot-aspect', `${slot.width} / ${slot.height}`);
       beforeOverlay.src = slot.beforeDataUrl;
-      beforeOverlay.classList.remove('hidden');
-      applyOverlayOpacity(opacitySlider.value);
+      beforePane.classList.remove('hidden');
 
-      const statusStr = slot.afterDataUrl ? '（已完成，按快門可重拍）' : '（請對齊畫面與陀螺儀按快門）';
-      modeBanner.textContent = `正在拍 #${selectedIndex + 1} 事後照 ${statusStr}`;
+      const isSplit = alignMode === 'split';
+      viewfinder.classList.toggle('split-mode', isSplit);
+      btnAlignOverlay.classList.toggle('active', !isSplit);
+      btnAlignSplit.classList.toggle('active', isSplit);
+      opacitySliderRow.classList.toggle('hidden', isSplit);
+      btnBlinkBefore.classList.toggle('hidden', isSplit);
+
+      if (!isSplit) {
+        applyOverlayOpacity(opacitySlider.value);
+      }
+
+      const statusStr = slot.afterDataUrl ? '（已完成，點畫面可重拍）' : '（對齊後點畫面任意處即可拍照）';
+      modeBanner.textContent = `正在拍 #${selectedIndex + 1} 後 after ${statusStr}`;
       if (!currentStream) startCamera();
     } else if (step === 3) {
       if (slots.length === 0) {
@@ -523,8 +539,8 @@
 
       if (showLabels) {
         const margin = Math.round(Math.min(w, h) * 0.03);
-        drawLabel(ctx, '事前 Before', margin, margin, h, false);
-        drawLabel(ctx, '事後 After', margin, h + gap + margin, h, true);
+        drawLabel(ctx, '前 before', margin, margin, h, false);
+        drawLabel(ctx, '後 after', margin, h + gap + margin, h, true);
       }
     } else {
       // 預設左右並排
@@ -538,8 +554,8 @@
 
       if (showLabels) {
         const margin = Math.round(Math.min(w, h) * 0.03);
-        drawLabel(ctx, '事前 Before', margin, margin, h, false);
-        drawLabel(ctx, '事後 After', w + gap + margin, margin, h, true);
+        drawLabel(ctx, '前 before', margin, margin, h, false);
+        drawLabel(ctx, '後 after', w + gap + margin, margin, h, true);
       }
     }
 
@@ -558,7 +574,7 @@
       singlePreviewBox.classList.add('hidden');
       combinedResultImg.src = slot.beforeDataUrl;
       combinedDataUrl = '';
-      resultStatusText.textContent = `第 #${selectedIndex + 1} 組尚未拍攝事後照，請點左下方「重拍此組事後」補拍`;
+      resultStatusText.textContent = `第 #${selectedIndex + 1} 組尚未拍攝「後 after」，請點左下方「重拍此組後照」補拍`;
       btnShareCombined.disabled = true;
       return;
     }
@@ -617,7 +633,7 @@
       .filter((item) => Boolean(item.slot.afterDataUrl));
 
     if (completed.length === 0) {
-      alert('目前還沒有已完成事後照的組別');
+      alert('目前還沒有已完成「後 after」的組別');
       return;
     }
 
@@ -626,7 +642,7 @@
 
     for (const item of completed) {
       const url = await buildCombinedDataUrl(item.slot, layoutForBatch, chkShowLabels.checked);
-      const file = await dataUrlToFile(url, `事前事後對比_第${item.num}組.jpg`);
+      const file = await dataUrlToFile(url, `前後對比_第${item.num}組.jpg`);
       files.push(file);
     }
 
@@ -634,7 +650,7 @@
       if (navigator.canShare && navigator.canShare({ files })) {
         await navigator.share({
           files,
-          title: `事前事後對比照（共 ${files.length} 組）`
+          title: `前後對比照（共 ${files.length} 組）`
         });
         return;
       }
@@ -654,10 +670,21 @@
     }
   }
 
-  // 事件綁定
-  btnEnableGyro.addEventListener('click', () => {
-    enableGyroscope();
-  });
+  // 事件綁定：移除手動啟用按鈕，改為載入時與首次觸碰螢幕任意處自動啟用陀螺儀
+  window.addEventListener(
+    'touchend',
+    () => {
+      if (!gyroEnabled) enableGyroscope();
+    },
+    { passive: true }
+  );
+  window.addEventListener(
+    'click',
+    () => {
+      if (!gyroEnabled) enableGyroscope();
+    },
+    { passive: true }
+  );
 
   // 若事前照從相簿匯入無陀螺儀角度，點一下讀數列可將目前角度設為此組目標角度
   gyroReadout.addEventListener('click', async () => {
@@ -709,16 +736,32 @@
     updateUIForStep();
   });
 
-  btnShutter.addEventListener('click', async () => {
+  async function triggerShutter() {
+    if (!gyroEnabled) {
+      await enableGyroscope();
+      if (!currentGyro) {
+        await new Promise((r) => setTimeout(r, 120));
+      }
+    }
+
     const frameDataUrl = captureVideoFrame(targetAspect);
     if (!frameDataUrl) return;
+
+    // 快門閃光視覺回饋
+    viewfinder.classList.add('flash');
+    setTimeout(() => viewfinder.classList.remove('flash'), 60);
 
     if (step === 1) {
       await addBeforeSlot(frameDataUrl, currentGyro);
     } else if (step === 2) {
       await setAfterForCurrentSlot(frameDataUrl);
     }
-  });
+  }
+
+  btnShutter.addEventListener('click', triggerShutter);
+
+  // 點擊鏡頭觀景窗畫面任意處即可拍照
+  viewfinder.addEventListener('click', triggerShutter);
 
   // 相簿匯入：模式 1 可一次選多張事前照；模式 2 為目前選中組別匯入事後照
   fileBeforeInput.addEventListener('change', async (e) => {
@@ -750,12 +793,22 @@
     if (step !== 3) startCamera();
   });
 
+  btnAlignOverlay.addEventListener('click', () => {
+    alignMode = 'overlay';
+    updateUIForStep();
+  });
+
+  btnAlignSplit.addEventListener('click', () => {
+    alignMode = 'split';
+    updateUIForStep();
+  });
+
   opacitySlider.addEventListener('input', (e) => {
     applyOverlayOpacity(e.target.value);
   });
 
   btnToggleGrid.addEventListener('click', () => {
-    gridOverlay.classList.toggle('hidden');
+    viewfinder.classList.toggle('grid-off');
     btnToggleGrid.classList.toggle('active');
   });
 
@@ -785,7 +838,7 @@
   });
 
   btnReset.addEventListener('click', async () => {
-    if (slots.length > 0 && !confirm('確定要清空目前所有已拍的事前／事後照嗎？')) {
+    if (slots.length > 0 && !confirm('確定要清空目前所有已拍的前／後照片嗎？')) {
       return;
     }
     slots = [];
@@ -798,7 +851,7 @@
 
   btnShareCombined.addEventListener('click', () => {
     if (!combinedDataUrl) return;
-    shareOrDownloadImage(combinedDataUrl, `事前事後對比_第${selectedIndex + 1}組.jpg`);
+    shareOrDownloadImage(combinedDataUrl, `前後對比_第${selectedIndex + 1}組.jpg`);
   });
 
   btnShareAll.addEventListener('click', () => {
@@ -808,17 +861,18 @@
   btnSaveBefore.addEventListener('click', () => {
     const slot = getSelectedSlot();
     if (!slot) return;
-    shareOrDownloadImage(slot.beforeDataUrl, `事前照_第${selectedIndex + 1}組.jpg`);
+    shareOrDownloadImage(slot.beforeDataUrl, `前_before_第${selectedIndex + 1}組.jpg`);
   });
 
   btnSaveAfter.addEventListener('click', () => {
     const slot = getSelectedSlot();
     if (!slot || !slot.afterDataUrl) return;
-    shareOrDownloadImage(slot.afterDataUrl, `事後照_第${selectedIndex + 1}組.jpg`);
+    shareOrDownloadImage(slot.afterDataUrl, `後_after_第${selectedIndex + 1}組.jpg`);
   });
 
-  // 初始化：載入先前保存的多組拍攝進度
+  // 初始化：載入先前保存的多組拍攝進度並預設啟動陀螺儀
   async function init() {
+    enableGyroscope();
     startCamera();
     slots = await loadSlotsFromDB();
     if (slots.length > 0) {

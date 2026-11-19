@@ -212,15 +212,50 @@ html, body {
 }
 
 .viewfinder {
+  --slot-aspect: 3 / 4;
   position: relative;
   height: 100%;
   max-height: 100%;
   max-width: 100%;
-  aspect-ratio: 3 / 4;
+  aspect-ratio: var(--slot-aspect);
   background: #000;
   border-radius: 14px;
   overflow: hidden;
   border: 1px solid var(--border);
+  cursor: pointer;
+}
+
+.viewfinder::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 20;
+  transition: opacity 0.18s ease-out;
+}
+
+.viewfinder.flash::after {
+  opacity: 0.75;
+  transition: none;
+}
+
+.camera-pane,
+.before-pane {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.camera-pane {
+  z-index: 1;
+}
+
+.before-pane {
+  z-index: 2;
+  pointer-events: none;
 }
 
 #camera-video,
@@ -236,7 +271,61 @@ html, body {
 .before-overlay {
   pointer-events: none;
   opacity: 0.45;
-  z-index: 2;
+}
+
+.pane-badge {
+  display: none;
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  z-index: 5;
+  background: rgba(17, 24, 39, 0.82);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.pane-badge.after-badge {
+  background: rgba(37, 99, 235, 0.88);
+}
+
+/* 左右並排對照拍攝模式（左事前照、右事後即時鏡頭） */
+.viewfinder.split-mode {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  width: 100%;
+  height: auto;
+  max-height: 100%;
+  aspect-ratio: auto;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  align-items: center;
+}
+
+.viewfinder.split-mode .before-pane,
+.viewfinder.split-mode .camera-pane {
+  position: relative;
+  inset: auto;
+  width: 100%;
+  height: auto;
+  aspect-ratio: var(--slot-aspect);
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: #000;
+}
+
+.viewfinder.split-mode .before-overlay {
+  opacity: 1 !important;
+}
+
+.viewfinder.split-mode .pane-badge {
+  display: inline-block;
 }
 
 /* 九宮格線 */
@@ -247,6 +336,18 @@ html, body {
   z-index: 3;
   -webkit-transform: translate3d(0, 0, 0);
   transform: translate3d(0, 0, 0);
+}
+
+.split-only-grid {
+  display: none;
+}
+
+.viewfinder.split-mode .split-only-grid {
+  display: block;
+}
+
+.viewfinder.grid-off .grid-overlay {
+  display: none !important;
 }
 
 .grid-line {
@@ -404,7 +505,7 @@ html, body {
   color: #fff;
 }
 
-/* 疊圖透明度控制區 */
+/* 疊圖與對照模式控制區 */
 .overlay-controls {
   background: var(--panel);
   padding: 8px 10px;
@@ -413,6 +514,31 @@ html, body {
   flex-direction: column;
   gap: 6px;
   flex-shrink: 0;
+}
+
+.align-mode-switch {
+  display: flex;
+  background: #111827;
+  padding: 3px;
+  border-radius: 9px;
+  gap: 4px;
+}
+
+.align-mode-btn {
+  flex: 1;
+  padding: 6px 6px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.align-mode-btn.active {
+  background: var(--primary);
+  color: #fff;
 }
 
 .slider-row {
