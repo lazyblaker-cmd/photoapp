@@ -37,9 +37,18 @@
   const combinedPreviewBox = document.getElementById('combined-preview-box');
   const combinedResultImg = document.getElementById('combined-result-img');
   const resultStatusText = document.getElementById('result-status-text');
+  const wipePreviewBox = document.getElementById('wipe-preview-box');
+  const wipeStage = document.getElementById('wipe-stage');
+  const wipeBeforeImg = document.getElementById('wipe-before-img');
+  const wipeAfterImg = document.getElementById('wipe-after-img');
+  const wipeTagBefore = document.getElementById('wipe-tag-before');
+  const wipeTagAfter = document.getElementById('wipe-tag-after');
   const singlePreviewBox = document.getElementById('single-preview-box');
   const singleBeforeImg = document.getElementById('single-before-img');
   const singleAfterImg = document.getElementById('single-after-img');
+  const igTrack = document.getElementById('ig-track');
+  const igPagePill = document.getElementById('ig-page-pill');
+  const igDots = document.querySelectorAll('.ig-dot');
 
   const btnSaveBefore = document.getElementById('btn-save-before');
   const btnSaveAfter = document.getElementById('btn-save-after');
@@ -73,7 +82,8 @@
   let selectedIndex = -1;
   let targetAspect = 3 / 4;
   let alignMode = 'overlay'; // 'overlay' (重疊半透明) | 'split' (左事前 / 右事後鏡頭)
-  let currentLayout = 'horizontal';
+  let currentLayout = 'horizontal'; // 'horizontal' | 'vertical' | 'wipe' | 'carousel'
+  let wipePercent = 50; // 滑塊拉桿百分比 (0 ~ 100)
   let combinedDataUrl = '';
 
   // 陀螺儀狀態
@@ -493,8 +503,8 @@
     updateGyroHUD();
   }
 
-  // 繪製標籤膠囊
-  function drawLabel(ctx, text, x, y, height, isAfter) {
+  // 繪製標籤膠囊（alignRight 為 true 時以右上角 x 為右邊界對齊）
+  function drawLabel(ctx, text, x, y, height, isAfter, alignRight = false) {
     const fontSize = Math.max(20, Math.round(height * 0.036));
     ctx.font = `bold ${fontSize}px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif`;
     const paddingX = Math.round(fontSize * 0.8);
@@ -503,21 +513,22 @@
     const boxW = textMetrics.width + paddingX * 2;
     const boxH = fontSize + paddingY * 2;
     const radius = Math.round(boxH / 2);
+    const drawX = alignRight ? x - boxW : x;
 
     ctx.save();
     ctx.fillStyle = isAfter ? 'rgba(37, 99, 235, 0.85)' : 'rgba(17, 24, 39, 0.78)';
     ctx.beginPath();
-    ctx.roundRect(x, y, boxW, boxH, radius);
+    ctx.roundRect(drawX, y, boxW, boxH, radius);
     ctx.fill();
 
     ctx.fillStyle = '#FFFFFF';
     ctx.textBaseline = 'middle';
-    ctx.fillText(text, x + paddingX, y + boxH / 2);
+    ctx.fillText(text, drawX + paddingX, y + boxH / 2);
     ctx.restore();
   }
 
   // 產生單組合成圖片 DataURL
-  async function buildCombinedDataUrl(slot, layout, showLabels) {
+  async function buildCombinedDataUrl(slot, layout, showLabels, splitPct = 50) {
     const bImg = await loadImage(slot.beforeDataUrl);
     const aImg = await loadImage(slot.afterDataUrl);
 
@@ -528,7 +539,48 @@
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
 
-    if (layout === 'vertical') {
+    if (layout === 'wipe') {
+      // 滑塊拉桿分割圖（左半露出「前 before」，右半露出「後 after」）
+      canvas.width = w;
+      canvas.height = h;
+      const splitX = Math.round(w * (splitPct / 100));
+
+      ctx.drawImage(aImg, 0, 0, w, h);
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, 0, splitX, h);
+      ctx.clip();
+      ctx.drawImage(bImg, 0, 0, w, h);
+      ctx.restore();
+
+      // 分隔白線與中間拉桿圓鈕
+      const lineW = Math.max(3, Math.round(w * 0.004));
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(splitX - Math.floor(lineW / 2), 0, lineW, h);
+
+      const handleR = Math.max(22, Math.round(Math.min(w, h) * 0.035));
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(splitX, h / 2, handleR, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(17, 24, 39, 0.85)';
+      ctx.fill();
+      ctx.lineWidth = Math.max(2, Math.round(lineW * 0.8));
+      ctx.strokeStyle = '#FFFFFF';
+      ctx.stroke();
+
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = `bold ${Math.round(handleR * 0.65)}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('◀ ▶', splitX, h / 2);
+      ctx.restore();
+
+      if (showLabels) {
+        const margin = Math.round(Math.min(w, h) * 0.03);
+        drawLabel(ctx, '前 before', margin, margin, h, false, false);
+        drawLabel(ctx, '後 after', w - margin, margin, h, true, true);
+      }
+    } else if (layout === 'vertical') {
       canvas.width = w;
       canvas.height = h * 2 + gap;
       ctx.fillStyle = '#FFFFFF';
@@ -571,6 +623,7 @@
 
     if (!slot.afterDataUrl) {
       combinedPreviewBox.classList.remove('hidden');
+      wipePreviewBox.classList.add('hidden');
       singlePreviewBox.classList.add('hidden');
       combinedResultImg.src = slot.beforeDataUrl;
       combinedDataUrl = '';
@@ -583,18 +636,35 @@
     singleAfterImg.src = slot.afterDataUrl;
     resultStatusText.textContent = `目前檢視：第 #${selectedIndex + 1} 組對比照（點上方縮圖可切換組別）`;
 
-    if (currentLayout === 'single') {
+    if (currentLayout === 'carousel') {
       combinedPreviewBox.classList.add('hidden');
+      wipePreviewBox.classList.add('hidden');
       singlePreviewBox.classList.remove('hidden');
       btnShareCombined.classList.add('hidden');
       return;
     }
 
+    if (currentLayout === 'wipe') {
+      combinedPreviewBox.classList.add('hidden');
+      singlePreviewBox.classList.add('hidden');
+      wipePreviewBox.classList.remove('hidden');
+      btnShareCombined.classList.remove('hidden');
+
+      wipeStage.style.setProperty('--wipe-aspect', `${slot.width} / ${slot.height}`);
+      wipeStage.style.setProperty('--wipe-pct', `${wipePercent}%`);
+      wipeBeforeImg.src = slot.beforeDataUrl;
+      wipeAfterImg.src = slot.afterDataUrl;
+      wipeTagBefore.classList.toggle('hidden', !chkShowLabels.checked);
+      wipeTagAfter.classList.toggle('hidden', !chkShowLabels.checked);
+      return;
+    }
+
     combinedPreviewBox.classList.remove('hidden');
+    wipePreviewBox.classList.add('hidden');
     singlePreviewBox.classList.add('hidden');
     btnShareCombined.classList.remove('hidden');
 
-    combinedDataUrl = await buildCombinedDataUrl(slot, currentLayout, chkShowLabels.checked);
+    combinedDataUrl = await buildCombinedDataUrl(slot, currentLayout, chkShowLabels.checked, wipePercent);
     combinedResultImg.src = combinedDataUrl;
   }
 
@@ -637,11 +707,21 @@
       return;
     }
 
-    const layoutForBatch = currentLayout === 'vertical' ? 'vertical' : 'horizontal';
+    const layoutForBatch =
+      currentLayout === 'vertical'
+        ? 'vertical'
+        : currentLayout === 'wipe'
+        ? 'wipe'
+        : 'horizontal';
     const files = [];
 
     for (const item of completed) {
-      const url = await buildCombinedDataUrl(item.slot, layoutForBatch, chkShowLabels.checked);
+      const url = await buildCombinedDataUrl(
+        item.slot,
+        layoutForBatch,
+        chkShowLabels.checked,
+        wipePercent
+      );
       const file = await dataUrlToFile(url, `前後對比_第${item.num}組.jpg`);
       files.push(file);
     }
@@ -849,7 +929,74 @@
     updateUIForStep();
   });
 
-  btnShareCombined.addEventListener('click', () => {
+  // 互動式滑塊拉桿 (Wipe Slider) 手指拖曳控制
+  let isDraggingWipe = false;
+  function updateWipeFromClientX(clientX) {
+    const rect = wipeStage.getBoundingClientRect();
+    if (!rect.width) return;
+    const rawPct = ((clientX - rect.left) / rect.width) * 100;
+    wipePercent = Math.max(0, Math.min(100, Math.round(rawPct * 10) / 10));
+    wipeStage.style.setProperty('--wipe-pct', `${wipePercent}%`);
+  }
+
+  wipeStage.addEventListener('pointerdown', (e) => {
+    isDraggingWipe = true;
+    if (wipeStage.setPointerCapture) {
+      try {
+        wipeStage.setPointerCapture(e.pointerId);
+      } catch (err) {}
+    }
+    updateWipeFromClientX(e.clientX);
+  });
+
+  wipeStage.addEventListener('pointermove', (e) => {
+    if (!isDraggingWipe) return;
+    updateWipeFromClientX(e.clientX);
+  });
+
+  const stopWipeDrag = () => {
+    isDraggingWipe = false;
+  };
+  wipeStage.addEventListener('pointerup', stopWipeDrag);
+  wipeStage.addEventListener('pointercancel', stopWipeDrag);
+
+  // IG 多圖式左右滑動檢視 (Carousel) 圓點與頁數更新
+  if (igTrack) {
+    igTrack.addEventListener(
+      'scroll',
+      () => {
+        const w = igTrack.clientWidth;
+        if (!w) return;
+        const page = Math.round(igTrack.scrollLeft / w);
+        igPagePill.textContent = `${page + 1} / 2`;
+        igDots.forEach((dot, idx) => {
+          dot.classList.toggle('active', idx === page);
+        });
+      },
+      { passive: true }
+    );
+  }
+
+  igDots.forEach((dot) => {
+    dot.addEventListener('click', () => {
+      const idx = Number(dot.dataset.slide || 0);
+      if (igTrack) {
+        igTrack.scrollTo({ left: idx * igTrack.clientWidth, behavior: 'smooth' });
+      }
+    });
+  });
+
+  btnShareCombined.addEventListener('click', async () => {
+    const slot = getSelectedSlot();
+    if (!slot || !slot.afterDataUrl) return;
+    if (currentLayout === 'wipe') {
+      combinedDataUrl = await buildCombinedDataUrl(
+        slot,
+        'wipe',
+        chkShowLabels.checked,
+        wipePercent
+      );
+    }
     if (!combinedDataUrl) return;
     shareOrDownloadImage(combinedDataUrl, `前後對比_第${selectedIndex + 1}組.jpg`);
   });

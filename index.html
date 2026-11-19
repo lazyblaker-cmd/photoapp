@@ -10,7 +10,7 @@
   <title>前後對齊對比相機</title>
   <link rel="manifest" href="./manifest.json" />
   <link rel="apple-touch-icon" href="./icon.svg" />
-  <link rel="stylesheet" href="./style.css?v=7" />
+  <link rel="stylesheet" href="./style.css?v=8" />
 </head>
 <body>
   <div class="app-shell">
@@ -123,7 +123,8 @@
         <div class="segmented-control">
           <button type="button" class="seg-btn active" data-layout="horizontal">左右並排</button>
           <button type="button" class="seg-btn" data-layout="vertical">上下並排</button>
-          <button type="button" class="seg-btn" data-layout="single">單張分開看</button>
+          <button type="button" class="seg-btn" data-layout="wipe">滑塊拉桿</button>
+          <button type="button" class="seg-btn" data-layout="carousel">IG 滑動</button>
         </div>
 
         <div class="options-row">
@@ -135,24 +136,52 @@
         </div>
       </div>
 
-      <!-- 合成後預覽圖 -->
+      <!-- 合成後預覽圖 (左右並排 / 上下並排) -->
       <div id="combined-preview-box" class="preview-box">
         <img id="combined-result-img" alt="前後對比圖" />
         <p id="result-status-text" class="hint-text">提示：點上方縮圖可切換不同組照片，長按圖片或點下方按鈕可儲存</p>
       </div>
 
-      <!-- 單張分開預覽 -->
-      <div id="single-preview-box" class="single-preview-grid hidden">
-        <div class="single-card">
-          <span class="card-tag">前 before</span>
-          <img id="single-before-img" alt="前 before" />
-          <button id="btn-save-before" class="secondary-btn" type="button">儲存前照</button>
+      <!-- 互動式前後對比滑塊拉桿 (Before / After Wipe Slider) -->
+      <div id="wipe-preview-box" class="preview-box hidden">
+        <div id="wipe-stage" class="wipe-stage">
+          <img id="wipe-after-img" class="wipe-img" alt="後 after" draggable="false" />
+          <img id="wipe-before-img" class="wipe-img wipe-before" alt="前 before" draggable="false" />
+          <span id="wipe-tag-before" class="wipe-tag left">前 before</span>
+          <span id="wipe-tag-after" class="wipe-tag right">後 after</span>
+          <div id="wipe-divider" class="wipe-divider">
+            <div class="wipe-handle">◀ ▶</div>
+          </div>
         </div>
-        <div class="single-card">
-          <span class="card-tag after">後 after</span>
-          <img id="single-after-img" alt="後 after" />
-          <button id="btn-save-after" class="secondary-btn" type="button">儲存後照</button>
+        <p class="hint-text">手指左右滑動分隔線可即時對比前後差異；點「分享此組對比照」可匯出目前分割畫面</p>
+      </div>
+
+      <!-- IG 多圖式左右滑動檢視 (Carousel) -->
+      <div id="single-preview-box" class="ig-carousel-box hidden">
+        <div class="ig-carousel-wrapper">
+          <span id="ig-page-pill" class="ig-page-pill">1 / 2</span>
+          <div id="ig-track" class="ig-track">
+            <div class="ig-slide">
+              <div class="ig-img-wrap">
+                <span class="wipe-tag left">前 before</span>
+                <img id="single-before-img" alt="前 before" />
+              </div>
+              <button id="btn-save-before" class="secondary-btn ig-save-btn" type="button">儲存「前 before」單張</button>
+            </div>
+            <div class="ig-slide">
+              <div class="ig-img-wrap">
+                <span class="wipe-tag right">後 after</span>
+                <img id="single-after-img" alt="後 after" />
+              </div>
+              <button id="btn-save-after" class="secondary-btn ig-save-btn" type="button">儲存「後 after」單張</button>
+            </div>
+          </div>
         </div>
+        <div class="ig-dots">
+          <button type="button" class="ig-dot active" data-slide="0" aria-label="第 1 張"></button>
+          <button type="button" class="ig-dot" data-slide="1" aria-label="第 2 張"></button>
+        </div>
+        <p class="hint-text">像 IG 一樣左右滑動切換「前 before」與「後 after」同角度大圖</p>
       </div>
 
       <div class="result-actions">
@@ -163,6 +192,6 @@
     </section>
   </div>
 
-  <script src="./app.js?v=7"></script>
+  <script src="./app.js?v=8"></script>
 </body>
 </html>

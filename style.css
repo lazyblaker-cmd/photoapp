@@ -743,42 +743,205 @@ html, body {
   text-align: center;
 }
 
-.single-preview-grid {
-  flex: 1;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  align-items: start;
-  overflow-y: auto;
+/* 互動式前後對比滑塊拉桿 (Wipe Slider) */
+.wipe-stage {
+  --wipe-pct: 50%;
+  --wipe-aspect: 3 / 4;
+  position: relative;
+  height: 100%;
+  max-height: calc(100dvh - 340px);
+  max-width: 100%;
+  aspect-ratio: var(--wipe-aspect);
+  border-radius: 10px;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+  background: #000;
+  border: 1px solid var(--border);
+  cursor: ew-resize;
 }
 
-.single-card {
-  background: var(--panel);
+.wipe-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+.wipe-before {
+  clip-path: inset(0 calc(100% - var(--wipe-pct)) 0 0);
+  -webkit-clip-path: inset(0 calc(100% - var(--wipe-pct)) 0 0);
+}
+
+.wipe-tag {
+  position: absolute;
+  top: 10px;
+  z-index: 3;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  pointer-events: none;
+  backdrop-filter: blur(4px);
+}
+
+.wipe-tag.left {
+  left: 10px;
+  background: rgba(17, 24, 39, 0.8);
+}
+
+.wipe-tag.right {
+  right: 10px;
+  background: rgba(37, 99, 235, 0.85);
+}
+
+.wipe-divider {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--wipe-pct);
+  width: 3px;
+  background: #fff;
+  transform: translateX(-50%);
+  z-index: 4;
+  pointer-events: none;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.6);
+}
+
+.wipe-handle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(17, 24, 39, 0.85);
+  border: 2px solid #fff;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: -1px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+/* IG 多圖式左右滑動檢視 (Carousel) */
+.ig-carousel-box {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  gap: 8px;
+  background: #0B0F19;
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 8px;
+}
+
+.ig-carousel-wrapper {
+  position: relative;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
   display: flex;
-  flex-direction: column;
-  gap: 6px;
   align-items: center;
 }
 
-.single-card img {
-  width: 100%;
-  border-radius: 8px;
-  object-fit: contain;
-}
-
-.card-tag {
+.ig-page-pill {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  z-index: 5;
+  background: rgba(17, 24, 39, 0.82);
+  color: #fff;
   font-size: 12px;
   font-weight: 700;
-  padding: 2px 10px;
+  padding: 3px 10px;
   border-radius: 999px;
-  background: #374151;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  pointer-events: none;
 }
 
-.card-tag.after {
-  background: var(--primary);
+.ig-track {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ig-track::-webkit-scrollbar {
+  display: none;
+}
+
+.ig-slide {
+  flex: 0 0 100%;
+  width: 100%;
+  height: 100%;
+  scroll-snap-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 4px;
+}
+
+.ig-img-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-height: calc(100dvh - 390px);
+  width: 100%;
+}
+
+.ig-img-wrap img {
+  max-width: 100%;
+  max-height: calc(100dvh - 390px);
+  object-fit: contain;
+  border-radius: 10px;
+}
+
+.ig-save-btn {
+  flex: 0 0 auto !important;
+  padding: 6px 14px !important;
+  font-size: 12px !important;
+}
+
+.ig-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.ig-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: none;
+  background: #4B5563;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.2s;
+}
+
+.ig-dot.active {
+  background: #3B82F6;
+  transform: scale(1.25);
 }
 
 .result-actions {
